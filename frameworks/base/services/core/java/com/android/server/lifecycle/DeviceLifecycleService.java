@@ -5,6 +5,7 @@ import android.os.Binder;
 import android.os.IDeviceLifecycle;
 import android.os.LocalSocket;
 import android.os.LocalSocketAddress;
+import android.os.RemoteException;
 import android.util.Slog;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
