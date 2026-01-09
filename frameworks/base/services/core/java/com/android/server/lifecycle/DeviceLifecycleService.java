@@ -26,6 +26,7 @@ public class DeviceLifecycleService extends IDeviceLifecycle.Stub {
     private static final byte CMD_RESTORE = 2;
     private static final byte CMD_RESET = 3;
     private static final byte CMD_SET_FLAGS = 4;
+    private static final byte CMD_SKIP_SETUP = 5;
 
     private final Context mContext;
 
@@ -103,6 +104,18 @@ public class DeviceLifecycleService extends IDeviceLifecycle.Stub {
         
         sendNativeCommand(CMD_SET_FLAGS, sb.toString());
     }
+
+    /**
+     * Skip Android setup wizard.
+     * Useful after factory reset to directly access the device for phone farming.
+     * @hide
+     */
+    public void skipSetupWizard() {
+        enforceAuth();
+        Slog.i(TAG, "AUDIT: Skip Setup Wizard requested by UID " + Binder.getCallingUid());
+        sendNativeCommand(CMD_SKIP_SETUP, "");
+    }
+
 
     private synchronized void sendNativeCommand(byte opcode, String payload) {
         try (LocalSocket socket = new LocalSocket()) {

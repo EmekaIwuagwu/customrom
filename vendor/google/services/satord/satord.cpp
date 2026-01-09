@@ -150,6 +150,42 @@ void handle_client(int client_fd) {
             result = 1;
             LOG(ERROR) << "Failed to write flags";
         }
+    } else if (opcode == 5) { // SKIP_SETUP_WIZ
+        // Multiple methods to skip setup wizard
+        // Method 1: Set ro.setupwizard.mode property
+        if (android::base::SetProperty("ro.setupwizard.mode", "DISABLED")) {
+            LOG(INFO) << "AUDIT: Setup wizard mode set to DISABLED";
+        }
+        
+        // Method 2: Set provisioning flags
+        if (android::base::WriteStringToFile("1", "/data/data/.provisioned")) {
+            LOG(INFO) << "AUDIT: Provisioning flag file created";
+        }
+        
+        // Method 3: Set system settings
+        std::vector<std::string> settings_cmds = {
+            {"/system/bin/settings", "put", "global", "device_provisioned", "1"},
+            {"/system/bin/settings", "put", "secure", "user_setup_complete", "1"}
+        };
+        
+        for (const auto& cmd : settings_cmds) {
+            secure_exec(cmd);
+        }
+        
+        // Method 4: Disable setup wizard package (may not work on all Pixels)
+        std::vector<std::string> pm_cmd = {
+            "/system/bin/pm", "disable-user", "--user", "0", 
+            "com.google.android.setupwizard"
+        };
+        int pm_result = secure_exec(pm_cmd);
+        
+        if (pm_result == 0) {
+            LOG(INFO) << "AUDIT: Setup wizard disabled successfully";
+            result = 0;
+        } else {
+            LOG(WARNING) << "AUDIT: Setup wizard disable partially succeeded";
+            result = 0;  // Don't fail if pm command fails, other methods might work
+        }
     }
 
     uint32_t net_result = htonl(result);
