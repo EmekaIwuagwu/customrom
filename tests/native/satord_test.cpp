@@ -71,3 +71,8 @@ TEST_F(SatordUtilsTest, PathValidation_PartialMatch_Fail) {
     // mismatch
     EXPECT_FALSE(validate_path_prefix(path, allowed));
 }
+
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
