@@ -18,6 +18,9 @@
 
 bool validate_package_name(const std::string& pkg) {
     if (pkg.empty()) return false;
+    // Don't allow starting with dot (prevents ".." or hidden files)
+    if (pkg[0] == '.') return false;
+    
     for (char c : pkg) {
         if (!isalnum(c) && c != '.' && c != '_') return false;
     }
