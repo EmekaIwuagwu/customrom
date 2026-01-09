@@ -1,0 +1,26 @@
+cc_library_static {
+    name: "libsator_utils",
+    srcs: [
+        "satord_utils.cpp",
+    ],
+    shared_libs: [
+        "libbase",
+    ],
+    export_include_dirs: ["."],
+}
+
+cc_binary {
+    name: "satord",
+    srcs: [
+        "satord.cpp",
+    ],
+    static_libs: [
+        "libsator_utils",
+    ],
+    shared_libs: [
+        "liblog",
+        "libbase",
+        "libcutils",
+    ],
+    init_rc: ["init.satord.rc"],
+}
