@@ -51,7 +51,8 @@ public class InstrumentationLoaderTest {
     public void testLoad_Success() throws Exception {
         String pkg = "com.example.secure";
         String libName = "libsecure.so";
-        byte[] libContent = new byte[] {0xCA, 0xFE, 0xBA, 0xBE};
+        // Cast to byte to avoid lossy conversion error
+        byte[] libContent = new byte[] {(byte)0xCA, (byte)0xFE, (byte)0xBA, (byte)0xBE};
         String hash = calculateHash(libContent);
 
         // Setup filesystem
@@ -76,7 +77,7 @@ public class InstrumentationLoaderTest {
     public void testLoad_BadHash_Blocked() throws Exception {
         String pkg = "com.example.hacked";
         String libName = "libhacked.so";
-        byte[] libContent = new byte[] {0xDE, 0xAD, 0xBE, 0xEF}; // Malicious
+        byte[] libContent = new byte[] {(byte)0xDE, (byte)0xAD, (byte)0xBE, (byte)0xEF}; // Malicious
         String goodHash = calculateHash(new byte[] {0x00}); // allowlist expects different content
 
         // Setup filesystem
