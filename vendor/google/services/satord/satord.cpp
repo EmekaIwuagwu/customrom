@@ -16,8 +16,6 @@
 #include <cutils/sockets.h>
 #include <private/android_filesystem_config.h>
 
-#include "satord_utils.h"
-
 #define SOCKET_PATH "/dev/socket/satord"
 
 // Ensure we only talk to System Server
@@ -32,6 +30,50 @@ bool check_peer_auth(int fd) {
         return false;
     }
     return true;
+}
+
+bool validate_path_prefix(const std::string& path, const std::vector<std::string>& allowed) {
+    char resolved[PATH_MAX];
+    if (realpath(path.c_str(), resolved) == NULL) {
+        // file might not exist yet for creation, so check dirname
+        std::string parent = android::base::Dirname(path);
+        if (realpath(parent.c_str(), resolved) == NULL) {
+             LOG(ERROR) << "Failed to resolve path: " << path;
+             return false;
+        }
+    }
+    std::string safe(resolved);
+    for (const auto& prefix : allowed) {
+        if (safe.find(prefix) == 0) return true;
+    }
+    LOG(ERROR) << "Path not allowed: " << safe;
+    return false;
+}
+
+bool validate_package_name(const std::string& pkg) {
+    if (pkg.empty()) return false;
+    for (char c : pkg) {
+        if (!isalnum(c) && c != '.' && c != '_') return false;
+    }
+    return true;
+}
+
+// Safer alternative to system()
+int secure_exec(const std::vector<std::string>& args) {
+    pid_t pid = fork();
+    if (pid < 0) return -1;
+    if (pid == 0) {
+        // Child
+        std::vector<char*> c_args;
+        for (const auto& arg : args) c_args.push_back(const_cast<char*>(arg.c_str()));
+        c_args.push_back(nullptr);
+        
+        execv(args[0].c_str(), c_args.data());
+        _exit(1); // Should not reach here
+    }
+    int status;
+    waitpid(pid, &status, 0);
+    return WEXITSTATUS(status);
 }
 
 void handle_client(int client_fd) {
@@ -91,6 +133,12 @@ void handle_client(int client_fd) {
                  if (validate_path_prefix(src, {"/sdcard/", "/mnt/vendor/backup/"}) &&
                      validate_path_prefix(dest_parent, {"/data/data"})) {
                      
+                     // Warning: Tar overwrite is destructive.
+                     // Real implementation should probably delete /data/data/pkg first
+                     // to ensure clean state, but standard tar extract works too.
+                     // restorecon is handled by tar --selinux if preserved, 
+                     // or we must run restorecon -R separately.
+                     
                      std::vector<std::string> args = {
                          "/system/bin/tar", "-xzf", src, "-C", dest_parent, "--selinux"
                      };
@@ -113,6 +161,9 @@ void handle_client(int client_fd) {
             android::base::SetProperty("sys.powerctl", "reboot,recovery");
         }
     } else if (opcode == 4) { // SET_FLAGS
+        // Payload is key=value\nkey=value...
+        // Write to /cache/provisioning_flags for simplicity ensuring persistance across some reboots
+        // or a vendor path.
         std::string flag_path = "/cache/recovery/provisioning_flags"; 
         if (android::base::WriteStringToFile(payload, flag_path)) {
             result = 0;
@@ -124,8 +175,7 @@ void handle_client(int client_fd) {
     }
 
     uint32_t net_result = htonl(result);
-    // Suppress warning about return value being ignored
-    if(write(client_fd, &net_result, 4)){};
+    write(client_fd, &net_result, 4);
     close(client_fd);
 }
 
