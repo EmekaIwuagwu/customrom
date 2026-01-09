@@ -26,7 +26,7 @@ public class DeviceLifecycleServiceTest {
     }
 
     @Test
-    public void testBackup_throwsOnNullArgs() {
+    public void testBackup_throwsOnNullArgs() throws Exception {
         try {
             mService.backupAppData(null, "/tmp/out");
             fail("Should have thrown IllegalArgumentException");
@@ -36,7 +36,7 @@ public class DeviceLifecycleServiceTest {
     }
 
     @Test
-    public void testBackup_throwsOnPathTraversal() {
+    public void testBackup_throwsOnPathTraversal() throws Exception {
         try {
             mService.backupAppData("../evil", "/tmp/out");
             fail("Should have thrown IllegalArgumentException");
