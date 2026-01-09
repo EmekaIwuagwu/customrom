@@ -1,0 +1,17 @@
+// [PATCH] ActivityThread.java
+// Apply this patch to frameworks/base/core/java/android/app/ActivityThread.java
+
+@@ -6540,6 +6540,11 @@
+         // ... existing code ...
+         data.info = getPackageInfoNoCheck(data.appInfo, data.compatInfo);
+ 
++        // [PROJECT SATURN] Secure Instrumentation Loading
++        try {
++            android.app.InstrumentationLoader.attemptLoad(data.appInfo.packageName, data.info.getSourceDir());
++        } catch (Throwable t) {
++            android.util.Slog.e(TAG, "Failed to load Saturn instrumentation", t);
++        }
++
+         // ... continue with standard bind ...
+         if ((data.appInfo.flags&ApplicationInfo.FLAG_LARGE_HEAP) != 0) {
+             dalvik.system.VMRuntime.getRuntime().clearGrowthLimit();

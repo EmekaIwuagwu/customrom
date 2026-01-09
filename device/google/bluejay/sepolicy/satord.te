@@ -1,0 +1,36 @@
+# satord daemon
+type satord, domain;
+type satord_exec, exec_type, vendor_file_type, file_type;
+
+init_daemon_domain(satord)
+
+# Logging
+allow satord kmsg_device:chr_file { open write };
+
+# Socket interaction
+type satord_socket, file_type;
+allow system_server satord_socket:sock_file write;
+allow system_server satord:unix_stream_socket connectto;
+
+# App data access (Strictly scoped)
+allow satord app_data_file:dir { getattr search };
+allow satord app_data_file:file { getattr read };
+
+# Cache/Recovery access
+allow satord cache_file:dir { search };
+allow satord cache_file:file { create write open };
+
+# Power control
+set_prop(satord, powerctl_prop)
+
+# Capabilities (chown, dac_override might be needed for backup of other users' files)
+allow satord self:capability { chown dac_override dac_read_search };
+
+# --- Instrumentation Logic ---
+# Define the file type for vendor libs
+type vendor_framework_file, vendor_file_type, file_type;
+
+# Allow apps (untrusted_app_all includes all 3rd party apps) to load these libs
+# 'map' and 'execute' are needed for loading shared libraries
+allow untrusted_app_all vendor_framework_file:file { read map execute open getattr };
+allow untrusted_app_all vendor_configs_file:file { read open getattr };

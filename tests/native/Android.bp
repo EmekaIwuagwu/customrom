@@ -1,0 +1,7 @@
+cc_test {
+    name: "satord_test",
+    srcs: ["satord_test.cpp"],
+    shared_libs: ["libbase", "liblog"],
+    test_suites: ["device-tests"],
+    require_root: true,
+}

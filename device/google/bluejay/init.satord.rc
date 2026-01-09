@@ -1,0 +1,9 @@
+service satord /vendor/bin/private/satord
+    class main
+    user root
+    group system
+    seclabel u:r:satord:s0
+    disabled
+
+on post-fs-data
+    mkdir /vendor/framework/frd 0755 root root
