@@ -42,26 +42,26 @@ public class DeviceLifecycleService extends IDeviceLifecycle.Stub {
     }
 
     @Override
-    public void backupAppData(String packageName, String destPath) {
+    public void backupAppData(String packageName, String destPath) throws RemoteException {
         enforceAuth();
         Slog.i(TAG, "AUDIT: Backup requested for " + packageName + " by UID " + Binder.getCallingUid());
         
-        if (packageName == null || destPath == null || packageName.contains("..")) {
-            throw new IllegalArgumentException("Invalid path arguments");
-        }
+        if (packageName == null || destPath == null) throw new IllegalArgumentException("Null args");
+        if (packageName.contains("..") || destPath.contains("..")) throw new IllegalArgumentException("Path traversal");
 
-        // Protocol: "pkg\0dest"
-        sendNativeCommand(CMD_BACKUP, packageName + "\0" + destPath);
+        int userId = android.os.UserHandle.getCallingUserId();
+        // Protocol: userId\0packageName\0destPath
+        String payload = userId + "\0" + packageName + "\0" + destPath;
+        sendNativeCommand(CMD_BACKUP, payload);
     }
 
     @Override
-    public void restoreAppData(String packageName, String srcPath) {
+    public void restoreAppData(String packageName, String srcPath) throws RemoteException {
         enforceAuth();
         Slog.i(TAG, "AUDIT: Restore requested for " + packageName + " by UID " + Binder.getCallingUid());
         
-        if (packageName == null || srcPath == null || packageName.contains("..")) {
-            throw new IllegalArgumentException("Invalid path arguments");
-        }
+        if (packageName == null || srcPath == null) throw new IllegalArgumentException("Null args");
+        if (packageName.contains("..") || srcPath.contains("..")) throw new IllegalArgumentException("Path traversal");
 
         try {
             // Stop the app before restoring data to prevent corruption
@@ -71,7 +71,10 @@ public class DeviceLifecycleService extends IDeviceLifecycle.Stub {
             // We proceed, as the native side might still succeed, but it's risky.
         }
         
-        sendNativeCommand(CMD_RESTORE, packageName + "\0" + srcPath);
+        int userId = android.os.UserHandle.getCallingUserId();
+        // Protocol: userId\0packageName\0srcPath
+        String payload = userId + "\0" + packageName + "\0" + srcPath;
+        sendNativeCommand(CMD_RESTORE, payload);
     }
 
     @Override

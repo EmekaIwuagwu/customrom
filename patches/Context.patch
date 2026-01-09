@@ -1,0 +1,16 @@
+--- a/frameworks/base/core/java/android/content/Context.java
++++ b/frameworks/base/core/java/android/content/Context.java
+@@ -5000,6 +5000,16 @@ public abstract class Context {
+      */
+     public static final String DEVICE_LIFECYCLE_SERVICE = "device_lifecycle";
+ 
++    /**
++     * Use with {@link #getSystemService(String)} to retrieve a
++     * {@link android.os.IDeviceLifecycle} for managing device security state.
++     *
++     * @see #getSystemService(String)
++     * @hide
++     */
++
+     // ...
+ }

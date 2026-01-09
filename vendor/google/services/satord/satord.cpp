@@ -61,48 +61,77 @@ void handle_client(int client_fd) {
     int result = -1;
 
     if (opcode == 1) { // BACKUP
-        size_t null_pos = payload.find('\0');
-        if (null_pos != std::string::npos) {
-            std::string pkg = payload.substr(0, null_pos);
-            std::string dest = payload.substr(null_pos + 1);
+        // Payload: "userId\0pkg\0dest"
+        std::vector<std::string> parts;
+        size_t start = 0;
+        size_t end = payload.find('\0');
+        while (end != std::string::npos) {
+            parts.push_back(payload.substr(start, end - start));
+            start = end + 1;
+            end = payload.find('\0', start);
+        }
+        parts.push_back(payload.substr(start));
+
+        if (parts.size() >= 3) {
+            std::string userId = parts[0];
+            std::string pkg = parts[1];
+            std::string dest = parts[2];
             
-            if (validate_package_name(pkg)) {
-                std::string src = "/data/data/" + pkg;
-                // Note: /mnt/vendor/backup/ must be created/writable by satord
-                if (validate_path_prefix(src, {"/data/data/"}) && 
-                    validate_path_prefix(dest, {"/sdcard/", "/mnt/vendor/backup/"})) {
+            if (validate_package_name(pkg) && std::all_of(userId.begin(), userId.end(), ::isdigit)) {
+                // Support multi-user paths
+                std::string src = "/data/user/" + userId + "/" + pkg;
+                
+                // Allow /data/data (user 0) and /data/user/
+                std::vector<std::string> allowed_srcs = {"/data/data/", "/data/user/"};
+                std::vector<std::string> allowed_dests = {"/sdcard/", "/mnt/vendor/backup/"};
+
+                if (validate_path_prefix(src, allowed_srcs) && 
+                    validate_path_prefix(dest, allowed_dests)) {
                     
                     std::vector<std::string> args = {
-                        "/system/bin/tar", "-czf", dest, "-C", "/data/data", pkg, "--selinux"
+                        "/system/bin/tar", "-czf", dest, "-C", "/data/user/" + userId, pkg, "--selinux"
                     };
                     result = secure_exec(args);
-                    LOG(INFO) << "AUDIT: Backup " << pkg << " -> " << dest << " res=" << result;
+                    LOG(INFO) << "AUDIT: Backup u" << userId << " " << pkg << " -> " << dest << " res=" << result;
                 }
             }
         }
     } else if (opcode == 2) { // RESTORE
-        size_t null_pos = payload.find('\0');
-        if (null_pos != std::string::npos) {
-             std::string pkg = payload.substr(0, null_pos);
-             std::string src = payload.substr(null_pos + 1);
-             
-             if (validate_package_name(pkg)) {
-                 std::string dest_parent = "/data/data";
+        // Payload: "userId\0pkg\0src"
+        // Same parsing logic...
+        std::vector<std::string> parts;
+        size_t start = 0;
+        size_t end = payload.find('\0');
+        while (end != std::string::npos) {
+            parts.push_back(payload.substr(start, end - start));
+            start = end + 1;
+            end = payload.find('\0', start);
+        }
+        parts.push_back(payload.substr(start));
+
+        if (parts.size() >= 3) {
+            std::string userId = parts[0];
+            std::string pkg = parts[1];
+            std::string src = parts[2];
+
+             if (validate_package_name(pkg) && std::all_of(userId.begin(), userId.end(), ::isdigit)) {
+                 std::string dest_parent = "/data/user/" + userId;
+                 
                  if (validate_path_prefix(src, {"/sdcard/", "/mnt/vendor/backup/"}) &&
-                     validate_path_prefix(dest_parent, {"/data/data"})) {
+                     validate_path_prefix(dest_parent, {"/data/data", "/data/user/"})) {
                      
                      std::vector<std::string> args = {
                          "/system/bin/tar", "-xzf", src, "-C", dest_parent, "--selinux"
                      };
                      result = secure_exec(args);
                      
-                     // Restorecon just in case
+                     // Restorecon
                      std::vector<std::string> rc_args = {
-                         "/system/bin/restorecon", "-R", "/data/data/" + pkg
+                         "/system/bin/restorecon", "-R", dest_parent + "/" + pkg
                      };
                      secure_exec(rc_args);
                      
-                     LOG(INFO) << "AUDIT: Restore " << pkg << " from " << src << " res=" << result;
+                     LOG(INFO) << "AUDIT: Restore u" << userId << " " << pkg << " from " << src << " res=" << result;
                  }
              }
         }
