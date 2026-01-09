@@ -10,11 +10,27 @@ import org.json.JSONObject;
 /** @hide */
 public class InstrumentationLoader {
     private static final String TAG = "InstrLoader";
-    private static final String ALLOWLIST_PATH = "/vendor/etc/frd_allowlist.json";
-    private static final String BASE_VENDOR_PATH = "/vendor/framework/frd/";
+    private static String sAllowlistPath = "/vendor/etc/frd_allowlist.json";
+    private static String sBaseVendorPath = "/vendor/framework/frd/";
+
+    public interface NativeLoader {
+        void load(String path);
+    }
+    private static NativeLoader sNativeLoader = System::load;
+
+    /** @hide */
+    public static void setPathsForTesting(String allowlist, String baseVendor) {
+        sAllowlistPath = allowlist;
+        sBaseVendorPath = baseVendor;
+    }
+
+    /** @hide */
+    public static void setLoaderForTesting(NativeLoader loader) {
+        sNativeLoader = loader;
+    }
 
     public static void attemptLoad(String packageName, String apkPath) {
-        File allowFile = new File(ALLOWLIST_PATH);
+        File allowFile = new File(sAllowlistPath);
         if (!allowFile.exists()) return;
 
         try {
@@ -32,8 +48,8 @@ public class InstrumentationLoader {
             String expectedHash = config.getString("sha256");
 
             // 2. Validate Path (Prevent traversal)
-            File libFile = new File(BASE_VENDOR_PATH + packageName + "/" + libName);
-            if (!libFile.getCanonicalPath().startsWith(BASE_VENDOR_PATH)) {
+            File libFile = new File(sBaseVendorPath + packageName + "/" + libName);
+            if (!libFile.getCanonicalPath().startsWith(sBaseVendorPath)) {
                 Log.e(TAG, "AUDIT: Path traversal attempt detected: " + packageName);
                 return;
             }
@@ -49,7 +65,7 @@ public class InstrumentationLoader {
             }
 
             // 4. Load
-            System.load(libFile.getAbsolutePath());
+            sNativeLoader.load(libFile.getAbsolutePath());
             Log.i(TAG, "AUDIT: Loaded authorized instrumentation for " + packageName);
 
         } catch (Exception e) {

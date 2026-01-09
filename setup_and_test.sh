@@ -96,7 +96,8 @@ javac -d build_java/classes -cp "libs/*" $JAVA_SOURCES
 
 # Run Java Tests
 echo -e "${GREEN}[*] [Java] Running JUnit...${NC}"
-if java -cp "build_java/classes:libs/*" org.junit.runner.JUnitCore com.android.server.lifecycle.DeviceLifecycleServiceTest; then
+TESTS="com.android.server.lifecycle.DeviceLifecycleServiceTest android.app.InstrumentationLoaderTest"
+if java -cp "build_java/classes:libs/*" org.junit.runner.JUnitCore $TESTS; then
     echo -e "${GREEN}[SUCCESS] Java tests passed!${NC}"
 else
     echo -e "${RED}[FAILURE] Java tests failed.${NC}"
